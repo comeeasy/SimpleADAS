@@ -5,26 +5,15 @@ from tqdm import tqdm
 
 
 class LaneDetector:
-    WARPAFFINE_WIDTH = 512
-    WARPAFFINE_HEIGHT = 256
+    WARPAFFINE_WIDTH = 256
+    WARPAFFINE_HEIGHT = 128
 
-    BEV_WIDTH = 256
-    BEV_HEIGHT = 512
+    BEV_WIDTH = 32
+    BEV_HEIGHT = 128
 
     N_WINDOWS = 32
     window_height = BEV_HEIGHT // N_WINDOWS
-    window_width = 54
-
-    # (x, y)순임. (y, x)순 아님
-    # LU -> LB -> RU -> RB
-    # 256 x 512 (H, W) image 기준
-    LANE_ROI_POINTS = [
-        [WARPAFFINE_WIDTH // 2 - 35, 50],
-        [75, WARPAFFINE_HEIGHT],
-        [WARPAFFINE_WIDTH // 2 + 50, 50],
-        [WARPAFFINE_WIDTH - 50, WARPAFFINE_HEIGHT],
-    ]
-    # rectangle
+    window_width = 16
 
     BEV_POINTS = [
         [0, 0],
@@ -34,19 +23,22 @@ class LaneDetector:
     ]
 
     def __init__(self, video_name: str):
+        # (x, y)순임. (y, x)순 아님
+        # LU -> LB -> RU -> RB
+        # 256 x 128 (W, H) image 기준
         if video_name.endswith("highway_D6_Trim.mp4"):
             self.LANE_ROI_POINTS = [
-                [self.WARPAFFINE_WIDTH // 2 - 35, 50],
-                [75, self.WARPAFFINE_HEIGHT],
-                [self.WARPAFFINE_WIDTH // 2 + 55, 50],
-                [self.WARPAFFINE_WIDTH - 50, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 - 25, 20],
+                [35, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 + 30, 20],
+                [self.WARPAFFINE_WIDTH - 30, self.WARPAFFINE_HEIGHT],
             ]
         elif video_name.endswith("highway_D5_Trim.mp4"):
             self.LANE_ROI_POINTS = [
-                [self.WARPAFFINE_WIDTH // 2 - 40, 50],
-                [80, self.WARPAFFINE_HEIGHT],
-                [self.WARPAFFINE_WIDTH // 2 + 45, 50],
-                [self.WARPAFFINE_WIDTH - 60, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 - 30, 20],
+                [30, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 + 30, 20],
+                [self.WARPAFFINE_WIDTH - 30, self.WARPAFFINE_HEIGHT],
             ]
 
         # self.lr = linear_model.RANSACRegressor()
@@ -91,7 +83,10 @@ class LaneDetector:
 
         if len(X) > 1:
             # self.lr.fit(np.array(X).reshape(-1, 1), np.array(Y))
-            z = np.polyfit(X, Y, 1)
+            try:
+                z = np.polyfit(X, Y, 1)
+            except:
+                return
             p = np.poly1d(z)
             print(p)
 
@@ -132,7 +127,10 @@ class LaneDetector:
 
         if len(X) > 1:
             # self.lr.fit(np.array(X).reshape(-1, 1), np.array(Y))
-            z = np.polyfit(X, Y, 1)
+            try:
+                z = np.polyfit(X, Y, 1)
+            except:
+                return
             p = np.poly1d(z)
             print(p)
 

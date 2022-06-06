@@ -4,8 +4,18 @@ from detections.LaneDetector import LaneDetector
 
 
 def main():
-    video_name = "/Users/joono/Desktop/joono/ComputerVisionADASProject/videos/highway_D5_Trim.mp4"
+    video_name = "/Users/joono/Desktop/joono/ComputerVisionADASProject/videos/highway_D6_Trim.mp4"
+    fps = 30
+
+    capfile = f'filesrc location={video_name} ! qtdemux ! queue \
+                            ! h264parse ! omxh264dec ! nvvidconv ! video/x-raw,format=BGRx,width=512,height=256 \
+                            ! videorate ! video/x-raw,framerate={fps}/1 !queue ! videoconvert ! queue ! video/x-raw, format=BGR \
+                            ! appsink'
+
+    cap = cv2.VideoCapture(capfile, cv2.CAP_GSTREAMER)
+
     cap = cv2.VideoCapture(video_name)
+
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -21,7 +31,7 @@ def main():
         template = frame[round(h*(1/3)):, :, :]
         cv2.imshow("half image", template)
 
-        template = cv2.resize(template, (512, 256))
+        template = cv2.resize(template, (256, 128))
         gray = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
         hsv = cv2.cvtColor(template, cv2.COLOR_BGR2HSV)
 
