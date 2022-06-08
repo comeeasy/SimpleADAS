@@ -3,7 +3,7 @@ import jetson.utils
 
 import cv2
 
-from detections.LaneDetector import LaneDetector, LaneDetectorAI
+from detections.LaneDetector import LaneDetector, LaneDetectorAI, SpeedDetector
 from detections.ObjectDetector import ObjectDetector
 from myWarnings.Warning import Warning
 
@@ -60,7 +60,7 @@ def main():
         gray = cv2.cvtColor(template, cv2.COLOR_RGB2GRAY)
         hsv = cv2.cvtColor(template, cv2.COLOR_RGB2HSV)
 
-        l_x, r_x = laneDetector(gray, hsv, template)
+        l_x, r_x, speed = laneDetector(gray, hsv, template)
         # laneDetector.show_BEV()
 
         # self.previous_out = out
