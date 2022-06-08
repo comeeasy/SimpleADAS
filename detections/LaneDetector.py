@@ -91,6 +91,20 @@ class LaneDetectorAI:
 
 
 
+class SpeedMeter:
+    def __init__(self, speed=60, threshold=10) -> None:
+        self._speed = speed
+        self.threshold = threshold
+
+    def update(self, speed):
+        if abs(speed - self._speed) < self.threshold:
+            self._speed = (self._speed + speed) / 2
+    
+    @property
+    def speed(self):
+        return self._speed
+            
+
 class LaneDetector:
     WARPAFFINE_WIDTH = 256
     WARPAFFINE_HEIGHT = 128
@@ -164,6 +178,20 @@ class LaneDetector:
             for r_idx in range(self.BEV_WIDTH // 2, self.BEV_WIDTH+1):
                 _.append((2 * r_idx + 1, _row))
             self.roi_to_BEV_table.append(_)
+
+        self.previous_roi_result = None
+        self.previous_out = None
+
+        self.num_pix_of_short_line = 37
+
+        # length of white short line is 5m
+        self.meter_per_pixel = 5 / 37
+
+        self.previous_optical_line = self.BEV_HEIGHT // 2
+        self.previous_speed = 60
+
+        self.speedMeter = SpeedMeter(speed=60, threshold=10)
+        
 
     def right_line_detect(self, img, template):
         X, Y = [], []
@@ -263,6 +291,7 @@ class LaneDetector:
                 return None
 
     def roi_lane_detect(self, roi_points, template=None):
+        roi_result = np.zeros_like(roi_points)
         l_x, r_x = 0, 0
         l_pts, r_pts = [], []
 
@@ -275,6 +304,7 @@ class LaneDetector:
         for i in range(self.N_WINDOWS): # 16: N_WINDOW
             for l_idx in range(n_rois - 1, -1, -1): # 3, 2, 1, 0
                 if roi_points[i][l_idx] > 0:
+                    roi_result[i][l_idx] = 1
                     x_bev, y_bev = self.roi_to_BEV_table[i][l_idx]
                     l_pts.append(self.BEV2TEMPLATE_LOOKUPTBL[x_bev][y_bev])
                     cv2.circle(self.BEV_color, self.roi_to_BEV_table[i][l_idx], 2, (0, 255, 255), -1)
@@ -284,6 +314,7 @@ class LaneDetector:
             
             for r_idx in range(roi_width - n_rois, roi_width): # 13, 12, 11, 10:
                 if roi_points[i][r_idx] > 0:
+                    roi_result[i][r_idx] = 1
                     x_bev, y_bev = self.roi_to_BEV_table[i][r_idx]
                     r_pts.append(self.BEV2TEMPLATE_LOOKUPTBL[x_bev][y_bev])
 
@@ -291,6 +322,11 @@ class LaneDetector:
                     # last idx is right x
                     r_x = r_idx
                     break
+
+        # if not self.previous_roi_result is None:
+        #     print(cv2.bitwise_and(roi_result, self.previous_roi_result))
+
+        self.previous_roi_result = roi_result
 
         # two short lane has length of 3points (two short lane is a line)
         if len(l_pts) > 4:
@@ -328,6 +364,8 @@ class LaneDetector:
         # white line image
         ret, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
 
+        cv2.imshow("white line", thresh)
+
         # combine yellow, white line image
         # out = cv2.addWeighted(thresh, 0.5, center_line_mask, 0.5, 0)
         out = cv2.add(thresh, center_line_mask)
@@ -336,6 +374,26 @@ class LaneDetector:
         # BEV image (256, 1024) (W, H)
         out = cv2.warpPerspective(out, self.M, (self.BEV_WIDTH, self.BEV_HEIGHT))
         out = cv2.normalize(out, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8UC1)
+
+        # optical image
+        if self.previous_out is not None:
+            optical = cv2.bitwise_and(out, self.previous_out)
+            cv2.imshow("back and", optical)
+
+            # search fitst line contating any white point
+            optical_line = self.find_optical_line(optical)
+
+            moving_pix_per_30ms = optical_line - self.previous_optical_line
+            current_speed_m_per_sec = moving_pix_per_30ms * self.meter_per_pixel * (100/3)
+
+            self.speedMeter.update((3600 / 1000) * current_speed_m_per_sec)
+            current_speed_km_per_hour = self.speedMeter.speed
+            print(f"curren speed: {current_speed_km_per_hour:.2f}km/h") 
+
+            self.previous_optical_line = optical_line
+        self.previous_out = cv2.dilate(out.copy(), np.ones((5, 5)), iterations=3)
+
+                       
 
         # roi points temp 
         roi_points = cv2.resize(out, (self.BEV_WIDTH // self.ROI_WIDTH, self.N_WINDOWS))
@@ -346,6 +404,14 @@ class LaneDetector:
         return l_x, r_x        
 
         # return self.left_line_detect(out, template), self.right_line_detect(out, template)
+
+    def find_optical_line(self, optical):
+        for i in range(self.BEV_HEIGHT-1, -1, -1):
+            for x in range(self.BEV_WIDTH-self.window_width, self.BEV_WIDTH):
+                if optical[i][x] > 0:
+                    return i
+        else:
+            return 0
 
     def show_BEV(self):
         cv2.imshow("BEV", self.BEV_color)

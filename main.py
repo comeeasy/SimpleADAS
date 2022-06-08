@@ -8,6 +8,7 @@ from detections.ObjectDetector import ObjectDetector
 from myWarnings.Warning import Warning
 
 import time
+import numpy as np
 
 def main():
     video_name = "/home/r320/ComputerVisionADASProject/videos/highway_D5_Trim.mp4"
@@ -39,7 +40,7 @@ def main():
 
     laneDetector = LaneDetector(video_name)
     # laneDetectorai = LaneDetectorAI()
-    objectDetector = ObjectDetector(network="ssd-inception-v2")
+    # objectDetector = ObjectDetector(network="ssd-inception-v2")
     warner = Warning(lane_warn_threshold=0.5, video_name=video_name)
 
     while True:
@@ -60,12 +61,16 @@ def main():
         hsv = cv2.cvtColor(template, cv2.COLOR_RGB2HSV)
 
         l_x, r_x = laneDetector(gray, hsv, template)
-        detections = objectDetector(jetson.utils.cudaFromNumpy(template), template)
+        # laneDetector.show_BEV()
 
-        lane_departure = warner.is_lane_departure(l_x, r_x)
-        collision_warn = warner.is_collision(detections)
+        # self.previous_out = out
 
-        print(lane_departure, collision_warn)
+        # detections = objectDetector(jetson.utils.cudaFromNumpy(template), template)
+
+        # lane_departure = warner.is_lane_departure(l_x, r_x)
+        # collision_warn = warner.is_collision(detections)
+
+        # print(lane_departure, collision_warn)
 
         tt2 = time.perf_counter()
         print(f"FPS {1000 * (tt2-tt):.3f}ms")
