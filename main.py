@@ -37,9 +37,9 @@ def main():
     print(w, h)
 
 
-    # laneDetector = LaneDetector(video_name)
-    laneDetectorai = LaneDetectorAI()
-    objectDetector = ObjectDetector()
+    laneDetector = LaneDetector(video_name)
+    # laneDetectorai = LaneDetectorAI()
+    # objectDetector = ObjectDetector(network="ssd-inception-v2")
 
     ret = True
     while True:
@@ -59,14 +59,13 @@ def main():
         gray = cv2.cvtColor(template, cv2.COLOR_RGB2GRAY)
         hsv = cv2.cvtColor(template, cv2.COLOR_RGB2HSV)
 
-        # l_x, r_x = laneDetector(gray, hsv, template)
-
+        l_x, r_x = laneDetector(gray, hsv, template)
         # laneDetector.show_BEV()
-        laneDetectorai(frame)
+        # laneDetectorai(frame)
+
         # detections = objectDetector(jetson.utils.cudaFromNumpy(template), template)
 
         
-
         tt2 = time.perf_counter()
         print(f"FPS {1000 * (tt2-tt):.3f}ms")
 
