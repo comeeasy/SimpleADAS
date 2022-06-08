@@ -24,7 +24,7 @@ class ObjectDetector:
             pts1 = x - w_half, y - h_half
             pts2 = x + w_half, y + h_half
 
-            cv2.rectangle(template, pts1, pts2, (255, 255, 0), 3)
+            cv2.rectangle(template, pts1, pts2, (255, 255, 0), 2)
 
         return detections
         
