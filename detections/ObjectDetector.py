@@ -7,7 +7,7 @@ import sys
 import cv2
 
 class ObjectDetector:
-    
+
     def __init__(self, network="ssd-mobilenet-v2", threshold=0.5, overlay="") -> None:
         self.net = jetson.inference.detectNet(network, sys.argv, threshold)
         self.overlay = overlay

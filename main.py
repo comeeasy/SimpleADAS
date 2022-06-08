@@ -1,11 +1,11 @@
 import jetson.inference
 import jetson.utils
 
-import sys
 import cv2
 
 from detections.LaneDetector import LaneDetector, LaneDetectorAI
 from detections.ObjectDetector import ObjectDetector
+from warnings.Warning import Warning
 
 import time
 
@@ -39,9 +39,9 @@ def main():
 
     laneDetector = LaneDetector(video_name)
     # laneDetectorai = LaneDetectorAI()
-    # objectDetector = ObjectDetector(network="ssd-inception-v2")
+    objectDetector = ObjectDetector(network="ssd-inception-v2")
+    warner = Warning(lane_warn_threshold=0.5, video_name=video_name)
 
-    ret = True
     while True:
         ret, frame = cap.read()
         # img = cap2.Capture()
@@ -60,10 +60,12 @@ def main():
         hsv = cv2.cvtColor(template, cv2.COLOR_RGB2HSV)
 
         l_x, r_x = laneDetector(gray, hsv, template)
-        # laneDetector.show_BEV()
-        # laneDetectorai(frame)
+        detections = objectDetector(jetson.utils.cudaFromNumpy(template), template)
 
-        # detections = objectDetector(jetson.utils.cudaFromNumpy(template), template)
+        lane_departure = warner.is_lane_departure(l_x, r_x)
+        collision_warn = warner.is_collision(detections)
+
+        print(lane_departure, collision_warn)
 
         
         tt2 = time.perf_counter()

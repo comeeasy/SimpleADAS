@@ -100,7 +100,7 @@ class LaneDetector:
 
     N_WINDOWS = 16
     window_height = BEV_HEIGHT // N_WINDOWS
-    window_width = 10
+    window_width = 8
 
     ROI_WIDTH = 2
 
@@ -117,17 +117,17 @@ class LaneDetector:
         # 256 x 128 (W, H) image 기준
         if video_name.endswith("highway_D6_Trim.mp4"):
             self.LANE_ROI_POINTS = [
-                [self.WARPAFFINE_WIDTH // 2 - 25, 20],
-                [35, self.WARPAFFINE_HEIGHT],
-                [self.WARPAFFINE_WIDTH // 2 + 30, 20],
-                [self.WARPAFFINE_WIDTH - 30, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 - 35, 30],
+                [25, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 + 40, 30],
+                [self.WARPAFFINE_WIDTH - 20, self.WARPAFFINE_HEIGHT],
             ]
         elif video_name.endswith("highway_D5_Trim.mp4"):
             self.LANE_ROI_POINTS = [
-                [self.WARPAFFINE_WIDTH // 2 - 30, 20],
-                [30, self.WARPAFFINE_HEIGHT],
-                [self.WARPAFFINE_WIDTH // 2 + 20, 20],
-                [self.WARPAFFINE_WIDTH - 30, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 - 35, 30],
+                [20, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 + 30, 30],
+                [self.WARPAFFINE_WIDTH - 20, self.WARPAFFINE_HEIGHT],
             ]
 
         # self.lr = linear_model.RANSACRegressor()
@@ -319,7 +319,7 @@ class LaneDetector:
         self.BEV_color = np.zeros_like(self.BEV_color)
 
         # edges = cv2.GaussianBlur(gray, (15, 15), sigmaX=3, sigmaY=3)
-        # edges = cv2.Canny(edges, 50, 70)
+        # edges = cv2.Canny(gray, 30, 100)
         # edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel=self.closing_kernel, iterations=3)
 
         # center line (yellow line)
@@ -338,7 +338,7 @@ class LaneDetector:
         out = cv2.normalize(out, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8UC1)
 
         # roi points temp 
-        roi_points = cv2.resize(out, (self.BEV_WIDTH // self.ROI_WIDTH, self.N_WINDOWS), interpolation=cv2.INTER_NEAREST)
+        roi_points = cv2.resize(out, (self.BEV_WIDTH // self.ROI_WIDTH, self.N_WINDOWS))
         l_x, r_x = self.roi_lane_detect(roi_points, template)
         
         cv2.imshow("lane middle result", out)
