@@ -5,7 +5,7 @@ import cv2
 
 from detections.LaneDetector import LaneDetector, LaneDetectorAI
 from detections.ObjectDetector import ObjectDetector
-from warnings.Warning import Warning
+from myWarnings.Warning import Warning
 
 import time
 
@@ -67,7 +67,6 @@ def main():
 
         print(lane_departure, collision_warn)
 
-        
         tt2 = time.perf_counter()
         print(f"FPS {1000 * (tt2-tt):.3f}ms")
 
