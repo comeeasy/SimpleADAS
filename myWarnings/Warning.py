@@ -84,12 +84,11 @@ class Warning:
 
     # @staticmethod
     def is_collision(self, detections):
-        for detection in detections:
+        for x, y, w, h in detections:
             try:
-                x, y = int(detection.Center[0]), int(detection.Center[1])
-                w_half, h_half = int(detection.Width / 2), int(detection.Height / 2)
+                x, y, w, h = int(x), int(y), int(w), int(h)
 
-                left_p, right_p = (x-w_half, y-h_half), (x+w_half, y-h_half)
+                left_p, right_p = (x, y+h), (x+w, y+h)
 
                 left_p_BEV  = self.TEMPLATE2BEV_LOOKUPTBL[left_p[0], left_p[1]]
                 right_p_BEV = self.TEMPLATE2BEV_LOOKUPTBL[right_p[0], right_p[1]]

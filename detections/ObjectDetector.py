@@ -27,4 +27,27 @@ class ObjectDetector:
             cv2.rectangle(template, pts1, pts2, (255, 255, 0), 2)
 
         return detections
+
+
+class ObjectDetectionHaar:
+
+    def __init__(self) -> None:
+        self.haar_xml = "/home/r320/ComputerVisionADASProject/detections/cars.xml"
+        self.car_cascade = cv2.CascadeClassifier(self.haar_xml)
+
+    def __call__(self, gray, template):
+
+        cars = self.car_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.05,
+            minNeighbors=5,
+            minSize=(30, 30),
+            flags=cv2.CASCADE_SCALE_IMAGE
+        )
+
+        for (x,y,w,h) in cars:
+            cv2.rectangle(template, (x,y),(x+w,y+h),(0,0,255),2)
+
+        return cars        
+
         
