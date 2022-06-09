@@ -97,8 +97,8 @@ class SpeedMeter:
         self.threshold = threshold
 
     def update(self, speed):
-        if abs(speed - self._speed) < self.threshold:
-            self._speed = (self._speed + speed) / 2
+        # if abs(speed - self._speed) < self.threshold:
+        self._speed = (self._speed + speed) / 2
     
     @property
     def speed(self):
@@ -313,7 +313,7 @@ class LaneDetector:
         speed = self.speedDetector(out)
         print(f"speed: {speed:.2f}km/h")
 
-        cv2.imshow("lane middle result", out)
+        # cv2.imshow("lane middle result", out)
 
         return l_x, r_x, speed        
 

@@ -4,7 +4,7 @@ import jetson.utils
 import cv2
 
 from detections.LaneDetector import LaneDetector, LaneDetectorAI, SpeedDetector
-from detections.ObjectDetector import ObjectDetector
+from detections.ObjectDetector import ObjectDetector, ObjectDetectionHaar
 from myWarnings.Warning import Warning
 
 import time
@@ -41,6 +41,7 @@ def main():
     laneDetector = LaneDetector(video_name)
     # laneDetectorai = LaneDetectorAI()
     # objectDetector = ObjectDetector(network="ssd-inception-v2")
+    objectDetector = ObjectDetectionHaar()
     warner = Warning(lane_warn_threshold=0.5, video_name=video_name)
 
     while True:
@@ -63,21 +64,19 @@ def main():
         l_x, r_x, speed = laneDetector(gray, hsv, template)
         # laneDetector.show_BEV()
 
-        # self.previous_out = out
+        detections = objectDetector(gray, template)
 
-        # detections = objectDetector(jetson.utils.cudaFromNumpy(template), template)
+        lane_departure = warner.is_lane_departure(l_x, r_x)
+        collision_warn = warner.is_collision(detections)
 
-        # lane_departure = warner.is_lane_departure(l_x, r_x)
-        # collision_warn = warner.is_collision(detections)
-
-        # print(lane_departure, collision_warn)
+        print(lane_departure, collision_warn)
 
         tt2 = time.perf_counter()
         print(f"FPS {1000 * (tt2-tt):.3f}ms")
 
         cv2.imshow("template", template)
 
-        k = cv2.waitKey(0)
+        k = cv2.waitKey(30)
         if 27 == k:
             break
 
