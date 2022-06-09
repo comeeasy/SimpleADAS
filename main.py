@@ -4,11 +4,11 @@ from detections.LaneDetector import LaneDetector
 
 
 def main():
-    video_name = "/Users/joono/Desktop/joono/ComputerVisionADASProject/videos/highway_D6_Trim.mp4"
+    video_name = "/Users/joono/Desktop/joono/ComputerVisionADASProject/videos/highway_D5_Trim.mp4"
     fps = 30
 
     capfile = f'filesrc location={video_name} ! qtdemux ! queue \
-                            ! h264parse ! omxh264dec ! nvvidconv ! video/x-raw,format=BGRx,width=512,height=256 \
+                            ! h264parse ! omxh264dec ! nvvidconv ! video/x-raw,format=BGRx,width=720,height=480 \
                             ! videorate ! video/x-raw,framerate={fps}/1 !queue ! videoconvert ! queue ! video/x-raw, format=BGR \
                             ! appsink'
 

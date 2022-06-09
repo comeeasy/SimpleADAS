@@ -13,7 +13,7 @@ class LaneDetector:
 
     N_WINDOWS = 32
     window_height = BEV_HEIGHT // N_WINDOWS
-    window_width = 16
+    window_width = 10
 
     BEV_POINTS = [
         [0, 0],
