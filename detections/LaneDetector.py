@@ -142,6 +142,7 @@ class LaneDetector:
         # self.speedMeter = SpeedMeter(speed=/60, threshold=10)
         self.speedDetector = SpeedDetector()
         self.cur_speed = 0
+        self.acc_frame_count = 0
 
     def roi_lane_detect(self, roi_points, template=None):
         roi_result = np.zeros_like(roi_points)
@@ -225,9 +226,16 @@ class LaneDetector:
         l_x, r_x = self.roi_lane_detect(roi_points, template)
         speed = self.speedDetector(out)
         if speed:
+            v_delta = speed - self.cur_speed
+            acceleration = v_delta / (0.033 * self.acc_frame_count)
+            
             self.cur_speed = speed
+            self.acc_frame_count = 0
+        else:
+            acceleration = 0
+            self.acc_frame_count += 1
 
-        return l_x, r_x, self.cur_speed        
+        return l_x, r_x, self.cur_speed, acceleration        
 
     def show_BEV(self):
         cv2.imshow("BEV", self.BEV_color)

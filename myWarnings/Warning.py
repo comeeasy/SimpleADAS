@@ -62,7 +62,11 @@ class Warning:
                         )
 
         self.collision_front_danger_distance = 0.5 * self.BEV_HEIGHT
-        self.collision_side_margin = 20
+        self.collision_side_margin = 10
+        
+        self.MAX_RAPID_TOLERANCE = 3
+        self.rapid_start_tolerance = 0
+        self.rapid_stop_tolerance = 0
 
 
     # @staticmethod
@@ -80,7 +84,7 @@ class Warning:
                 cv2.putText(
                     template, 
                     "Lane!", (170, 25), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
                 
                 return True
 
@@ -99,12 +103,12 @@ class Warning:
                 right_p_BEV = self.TEMPLATE2BEV_LOOKUPTBL[right_p[0]][right_p[1]]
 
                 x, y = left_p_BEV[0], left_p_BEV[1]
-                if self.collision_side_margin < x < self.BEV_WIDTH + self.collision_side_margin \
+                if self.collision_side_margin < x < self.BEV_WIDTH - self.collision_side_margin \
                             and self.collision_front_danger_distance < y:
                     cv2.putText(
                         template, 
-                        "Objs!", (170, 50), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                        "Warn!", (170, 50), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
                     
                     return True
                 else:
@@ -115,8 +119,8 @@ class Warning:
                             and self.collision_front_danger_distance < y:
                     cv2.putText(
                         template, 
-                        "Objs!", (170, 50), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                        "Warn!", (170, 50), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
                     
                     return True
                 else:
@@ -126,6 +130,30 @@ class Warning:
                 continue
         else:
             return  False
+        
+    def is_rapid_stop_or_start(self, acceleration, template):
+        
+        if acceleration > 5:
+            self.rapid_stop_tolerance = 0
+            self.rapid_start_tolerance += 1
+            
+            if self.rapid_start_tolerance >= self.MAX_RAPID_TOLERANCE:
+                print("Warn : Rapid Accelerate!")
+                cv2.putText(
+                    template, 
+                    "RapStart", (170, 75), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (100, 255, 255), 2)
+        
+        if acceleration < -6:
+            self.rapid_start_tolerance = 0
+            self.rapid_stop_tolerance += 1
+
+            if self.rapid_stop_tolerance >= self.MAX_RAPID_TOLERANCE:
+                print("Warn! : Rapid Stop!")
+                cv2.putText(
+                    template, 
+                    "RapStop", (170, 75), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (100, 255, 255), 2)
         
 
         
