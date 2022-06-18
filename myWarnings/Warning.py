@@ -50,9 +50,9 @@ class Warning:
         )
 
         self.TEMPLATE2BEV_LOOKUPTBL = []
-        for x in range(self.BEV_WIDTH+1):
+        for x in range(256 + 1):
             self.TEMPLATE2BEV_LOOKUPTBL.append([])
-            for y in range(self.BEV_HEIGHT+1):
+            for y in range(128 + 1):
                 bef_coor = np.array([x, y, 1])
                 aft_coor = np.matmul(self.M, np.transpose(bef_coor))
 
@@ -62,11 +62,11 @@ class Warning:
                         )
 
         self.collision_front_danger_distance = 0.5 * self.BEV_HEIGHT
-        self.collision_side_margin = 10
+        self.collision_side_margin = 20
 
 
     # @staticmethod
-    def is_lane_departure(self, l_x, r_x):
+    def is_lane_departure(self, l_x, r_x, template):
         if not l_x is None and not r_x is None:
             left_dist  = abs(l_x - self.center_of_template)
             right_dist = abs(r_x - self.center_of_template)
@@ -77,36 +77,52 @@ class Warning:
                 ratio = left_dist / right_dist
             
             if ratio < self.lane_warn_threshold:
+                cv2.putText(
+                    template, 
+                    "Lane!", (170, 25), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+                
                 return True
 
         else:
             return False
 
     # @staticmethod
-    def is_collision(self, detections):
+    def is_collision(self, detections, template):
         for x, y, w, h in detections:
             try:
                 x, y, w, h = int(x), int(y), int(w), int(h)
 
                 left_p, right_p = (x, y+h), (x+w, y+h)
 
-                left_p_BEV  = self.TEMPLATE2BEV_LOOKUPTBL[left_p[0], left_p[1]]
-                right_p_BEV = self.TEMPLATE2BEV_LOOKUPTBL[right_p[0], right_p[1]]
+                left_p_BEV  = self.TEMPLATE2BEV_LOOKUPTBL[left_p[0]][left_p[1]]
+                right_p_BEV = self.TEMPLATE2BEV_LOOKUPTBL[right_p[0]][right_p[1]]
 
                 x, y = left_p_BEV[0], left_p_BEV[1]
-                if self.collision_side_margin < x < self.BEV_WID + self.collision_side_margin \
-                            and -20 < y < self.collision_front_danger_distance:
+                if self.collision_side_margin < x < self.BEV_WIDTH + self.collision_side_margin \
+                            and self.collision_front_danger_distance < y:
+                    cv2.putText(
+                        template, 
+                        "Objs!", (170, 50), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                    
                     return True
                 else:
                     False
                 
                 x, y = right_p_BEV[0], right_p_BEV[1]
-                if self.collision_side_margin < x < self.BEV_WID + self.collision_side_margin \
-                            and -20 < y < self.collision_front_danger_distance:
+                if self.collision_side_margin < x < self.BEV_WIDTH + self.collision_side_margin \
+                            and self.collision_front_danger_distance < y:
+                    cv2.putText(
+                        template, 
+                        "Objs!", (170, 50), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                    
                     return True
                 else:
                     False
-            except:
+            except Exception as e:
+                print(e)
                 continue
         else:
             return  False

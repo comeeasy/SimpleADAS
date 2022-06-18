@@ -1,148 +1,57 @@
 import cv2
 import numpy as np
 # from sklearn import linear_model
-from tqdm import tqdm
 
-from detections.Ultra.utils.config import Config
-from detections.Ultra.data.constant import culane_row_anchor
-
-import torch
-import torch.nn as nn
-import os
-
-from torch2trt import TRTModule
-
-class LaneDetectorAI:
-    
-    def __init__(self):
-        self.cfg = Config.fromfile('/home/r320/ComputerVisionADASProject/detections/Ultra/configs/culane.py')
-        self.cfg.test_model = f"/home/r320/ComputerVisionADASProject/detections/Ultra/weights/culane_18_fp16.pth"
-        torch.backends.cudnn.benchmark = True
-
-        assert self.cfg.backbone in ['18','34','50','101','152','50next','101next','50wide','101wide']
-
-        if self.cfg.dataset == 'CULane':
-            self.cls_num_per_lane = 18
-            self.row_anchor = culane_row_anchor
-        elif self.cfg.dataset == 'Tusimple':
-            self.cls_num_per_lane = 56
-        else:
-            raise NotImplementedError
-            
-        #addition 12/26
-        self.sm = nn.Softmax(dim=0)
-        # we add for fix segementation fault
-        self.idx = torch.tensor(list(range(self.cfg.griding_num)), device='cuda', dtype=torch.float16) + 1
-        # origin
-        # self.idx = torch.arange(self.cfg.griding_num).type(torch.HalfTensor).cuda() + 1
-        self.idx = self.idx.reshape(-1, 1, 1)
-
-        # tensorrt model
-        self.net_trt = TRTModule()
-        self.net_trt.load_state_dict(torch.load(self.cfg.test_model))
-        self.net_trt.eval()
-        
-        self.col_sample = np.linspace(0, 800 - 1, self.cfg.griding_num)
-        self.col_sample_w = self.col_sample[1] - self.col_sample[0]
-        self.img_h = 288
-
-    def __call__(self, img):
-        frame_lane = cv2.resize(img, (800, 288))
-
-        img = torch.tensor(frame_lane, device=torch.device("cuda")).permute(2, 0, 1)
-        img = img.view(1, 3, 288, 800)
-        img = torch.div(img, 255.)
-
-        with torch.no_grad():
-            out = self.net_trt(img)
-
-        ### Lane: calculate out_j
-        out_j = out.squeeze()
-        prob = self.sm(out_j[:-1, :, :])
-        
-        loc = torch.sum(prob * self.idx, axis=0)
-        
-        out_j = torch.argmax(out_j, axis=0)
-        out_j = out_j%self.cfg.griding_num
-        out_j = out_j.bool().int()
-        loc = loc * out_j
-
-        out_j = loc.detach().cpu().numpy()
-        out_j = out_j[::-1,:]
-
-        ### Lane: calculate ppp
-        line = []
-        lane_loc_list = []
-        for i in range(out_j.shape[1]):
-            if np.sum(out_j[:, i] != 0) > 2:
-                for k in range(out_j.shape[0]):
-                    if out_j[k, i] > 0:
-                        ppp = (int(out_j[k, i] * self.col_sample_w) - 1, int(self.img_h * (self.row_anchor[self.cls_num_per_lane-1-k]/288)) - 1 )
-                        line.append(ppp)
-                lane_loc_list.append(line)
-                line = []
-        
-        for line in lane_loc_list:
-            for locate in line:
-                if locate[0] > 0:
-                    cv2.circle(frame_lane, tuple(np.int32(locate)), 3, (0, 255, 0), 3)
-        
-        cv2.imshow("lane", frame_lane)
-
-
-
-class SpeedMeter:
-    def __init__(self, speed=60, threshold=10) -> None:
-        self._speed = speed
-        self.threshold = threshold
-
-    def update(self, speed):
-        # if abs(speed - self._speed) < self.threshold:
-        self._speed = (self._speed + speed) / 2
-    
-    @property
-    def speed(self):
-        return self._speed
 
 class SpeedDetector:
     def __init__(self) -> None:
-        self.num_pix_of_short_line = 37
-
-        # length of white short line is 5m
-        self.meter_per_pixel = 5 / 37
-
-        self.previous_optical_line = LaneDetector.BEV_HEIGHT // 2
-        self.previous_speed = 60
-        self.previous_out = None
-
-        self.speedMeter = SpeedMeter(speed=60, threshold=10)
-
-    def find_optical_line(self, optical):
-        for i in range(LaneDetector.BEV_HEIGHT-1, -1, -1):
-            for x in range(LaneDetector.BEV_WIDTH-LaneDetector.window_width, LaneDetector.BEV_WIDTH):
-                if optical[i][x] > 0:
-                    return i
-        else:
-            return 0
-
-    def __call__(self, out):
-        # optical image
-        if self.previous_out is not None:
-            optical = cv2.bitwise_and(out, self.previous_out)
-            cv2.imshow("back and", optical)
-
-            # search fitst line contating any white point
-            optical_line = self.find_optical_line(optical)
-
-            moving_pix_per_30ms = optical_line - self.previous_optical_line
-            current_speed_m_per_sec = moving_pix_per_30ms * self.meter_per_pixel * (100/3)
-
-            self.speedMeter.update((3600 / 1000) * current_speed_m_per_sec)
-            self.previous_optical_line = optical_line
-
-        self.previous_out = cv2.dilate(out.copy(), np.ones((5, 5)), iterations=3)
+        self.MAX_TOLERANCE = 3
+        self.frame_count = 0
+        self.tolerance = 0
         
-        return self.speedMeter.speed
+        self.coef_of_equ = 3600 * 5 / 33
+
+    def calc_velocity(self, frame_count):
+        if frame_count == 0:
+            return 0
+        
+        v = self.coef_of_equ / frame_count
+        if v > 100:
+            return 0
+        else:
+            return v 
+
+    def line_frame_count(self, out):
+        for i in range(LaneDetector.BEV_WIDTH-LaneDetector.window_width, LaneDetector.BEV_WIDTH):
+            
+            if out[LaneDetector.BEV_HEIGHT-10][i] > 150:
+                # error condition 
+                if self.frame_count > 300000:
+                    self.frame_count = 0
+                
+                self.frame_count += 1
+                # velocity is not yet decided
+                return False, 0
+        else:
+            if self.tolerance < self.MAX_TOLERANCE:
+                self.tolerance += 1
+                return False, 0
+            else:
+                self.tolerance = 0
+                frame_count = self.frame_count
+                
+                if frame_count != 0:
+                    self.frame_count = 0
+                    return True, self.calc_velocity(frame_count)
+                else:
+                    return False, 0
+            
+            
+    def __call__(self, out):
+        is_calculated, velocity = self.line_frame_count(out)
+        if is_calculated:
+            return velocity
+        
  
 
 class LaneDetector:
@@ -154,13 +63,9 @@ class LaneDetector:
 
     N_WINDOWS = 16
     window_height = BEV_HEIGHT // N_WINDOWS
-<<<<<<< HEAD
-    window_width = 10
-=======
     window_width = 8
 
     ROI_WIDTH = 2
->>>>>>> f8b400cb0d98a8dd09c3b802e170862fc6399451
 
     BEV_POINTS = [
         [0, 0],
@@ -175,17 +80,17 @@ class LaneDetector:
         # 256 x 128 (W, H) image 기준
         if video_name.endswith("highway_D6_Trim.mp4"):
             self.LANE_ROI_POINTS = [
-                [self.WARPAFFINE_WIDTH // 2 - 35, 30],
-                [25, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 - 25, 30],
+                [35, self.WARPAFFINE_HEIGHT],
                 [self.WARPAFFINE_WIDTH // 2 + 40, 30],
                 [self.WARPAFFINE_WIDTH - 20, self.WARPAFFINE_HEIGHT],
             ]
         elif video_name.endswith("highway_D5_Trim.mp4"):
             self.LANE_ROI_POINTS = [
-                [self.WARPAFFINE_WIDTH // 2 - 35, 30],
-                [20, self.WARPAFFINE_HEIGHT],
-                [self.WARPAFFINE_WIDTH // 2 + 30, 30],
-                [self.WARPAFFINE_WIDTH - 20, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 - 25, 30],
+                [30, self.WARPAFFINE_HEIGHT],
+                [self.WARPAFFINE_WIDTH // 2 + 25, 30],
+                [self.WARPAFFINE_WIDTH - 30, self.WARPAFFINE_HEIGHT],
             ]
 
         # self.lr = linear_model.RANSACRegressor()
@@ -199,7 +104,7 @@ class LaneDetector:
         self.low_yellow = np.array([0, 50, 0])
         self.upper_yellow = np.array([120, 255, 255])
 
-        for x in tqdm(range(self.BEV_WIDTH+1)):
+        for x in range(self.BEV_WIDTH+1):
             self.BEV2TEMPLATE_LOOKUPTBL.append([])
             for y in range(self.BEV_HEIGHT+1):
                 bef_coor = np.array([x, y, 1])
@@ -236,6 +141,7 @@ class LaneDetector:
 
         # self.speedMeter = SpeedMeter(speed=/60, threshold=10)
         self.speedDetector = SpeedDetector()
+        self.cur_speed = 0
 
     def roi_lane_detect(self, roi_points, template=None):
         roi_result = np.zeros_like(roi_points)
@@ -311,15 +217,17 @@ class LaneDetector:
         out = cv2.warpPerspective(out, self.M, (self.BEV_WIDTH, self.BEV_HEIGHT))
         out = cv2.normalize(out, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8UC1)               
 
+        cv2.imshow("BEV", out)
+
         # roi points temp 
         roi_points = cv2.resize(out, (self.BEV_WIDTH // self.ROI_WIDTH, self.N_WINDOWS))
+        
         l_x, r_x = self.roi_lane_detect(roi_points, template)
         speed = self.speedDetector(out)
-        print(f"speed: {speed:.2f}km/h")
+        if speed:
+            self.cur_speed = speed
 
-        # cv2.imshow("lane middle result", out)
-
-        return l_x, r_x, speed        
+        return l_x, r_x, self.cur_speed        
 
     def show_BEV(self):
         cv2.imshow("BEV", self.BEV_color)
