@@ -131,9 +131,12 @@ class Warning:
         else:
             return  False
         
-    def is_rapid_stop_or_start(self, acceleration, template):
+    def is_rapid_stop_or_start(self, speed, acceleration, template):
         
-        if acceleration > 5:
+        # 국토교통부 위험운전행동 기준
+        
+        # 5km/h 이하 속도에서 출발하여 초당 6km/h 이상 가속 운행하는 경우
+        if acceleration >= 5 and speed <= 5:
             self.rapid_stop_tolerance = 0
             self.rapid_start_tolerance += 1
             
@@ -144,7 +147,8 @@ class Warning:
                     "RapStart", (170, 75), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (100, 255, 255), 2)
         
-        if acceleration < -6:
+        # 초당 8km/h 이상 감속 운행하고 속도가 6km/h 이상인경우
+        if acceleration <= -8 and speed >= 6:
             self.rapid_start_tolerance = 0
             self.rapid_stop_tolerance += 1
 
