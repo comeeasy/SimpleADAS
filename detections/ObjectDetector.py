@@ -1,5 +1,3 @@
-import argparse
-import sys
 import cv2
 
 class ObjectDetectionHaar:

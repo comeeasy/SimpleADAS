@@ -16,7 +16,6 @@ def main():
 
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    w, h = 1920, 1080
 
     laneDetector = LaneDetector(video_name)
     objectDetector = ObjectDetectionHaar()
@@ -39,7 +38,7 @@ def main():
 
         warner.is_lane_departure(l_x, r_x, template)
         warner.is_collision(detections, template)
-        warner.is_rapid_stop_or_start(acceleration, template)
+        warner.is_rapid_stop_or_start(speed, acceleration, template)
 
         tt2 = time.perf_counter()
         fps = 1 / (tt2-tt)
@@ -48,7 +47,7 @@ def main():
         cv2.putText(template, f"FPS:{fps:.2f}", (0, 12), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 200, 200), 2)    
         cv2.imshow(f"ADAS", template)
 
-        k = cv2.waitKey(30)
+        k = cv2.waitKey(0)
         if 27 == k:
             break
 

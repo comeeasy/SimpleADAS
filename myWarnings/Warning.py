@@ -25,7 +25,7 @@ class Warning:
 
     def __init__(self, lane_warn_threshold, video_name) -> None:
         self.center_of_template = 128
-        self.maximum_of_distance_mul = self.center_of_template * self.center_of_template    
+        # self.maximum_of_distance_mul = self.center_of_template * self.center_of_template    
         self.lane_warn_threshold = lane_warn_threshold
 
         if video_name.endswith("highway_D6_Trim.mp4"):

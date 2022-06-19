@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-# from sklearn import linear_model
 
 
 class SpeedDetector:
@@ -93,7 +92,6 @@ class LaneDetector:
                 [self.WARPAFFINE_WIDTH - 30, self.WARPAFFINE_HEIGHT],
             ]
 
-        # self.lr = linear_model.RANSACRegressor()
         self.M = cv2.getPerspectiveTransform(
             np.array(self.LANE_ROI_POINTS, dtype=np.float32),
             np.array(self.BEV_POINTS, dtype=np.float32)
@@ -116,8 +114,6 @@ class LaneDetector:
                         )
                     
 
-        self.BEV_color = np.zeros((self.BEV_HEIGHT, self.BEV_WIDTH, 3))
-        self.closing_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
         self.roi_to_BEV_table = []
         for row in range(self.N_WINDOWS+1):
             _ = list()
@@ -128,24 +124,11 @@ class LaneDetector:
                 _.append((2 * r_idx + 1, _row))
             self.roi_to_BEV_table.append(_)
 
-        self.previous_roi_result = None
-        self.previous_out = None
-
-        self.num_pix_of_short_line = 37
-
-        # length of white short line is 5m
-        self.meter_per_pixel = 5 / 37
-
-        self.previous_optical_line = self.BEV_HEIGHT // 2
-        self.previous_speed = 60
-
-        # self.speedMeter = SpeedMeter(speed=/60, threshold=10)
         self.speedDetector = SpeedDetector()
         self.cur_speed = 0
         self.acc_frame_count = 0
 
     def roi_lane_detect(self, roi_points, template=None):
-        roi_result = np.zeros_like(roi_points)
         l_x, r_x = 0, 0
         l_pts, r_pts = [], []
 
@@ -158,26 +141,20 @@ class LaneDetector:
         for i in range(self.N_WINDOWS): # 16: N_WINDOW
             for l_idx in range(n_rois - 1, -1, -1): # 3, 2, 1, 0
                 if roi_points[i][l_idx] > 0:
-                    roi_result[i][l_idx] = 1
                     x_bev, y_bev = self.roi_to_BEV_table[i][l_idx]
                     l_pts.append(self.BEV2TEMPLATE_LOOKUPTBL[x_bev][y_bev])
-                    cv2.circle(self.BEV_color, self.roi_to_BEV_table[i][l_idx], 2, (0, 255, 255), -1)
                     # last idx is left x
                     l_x = l_idx
                     break
             
             for r_idx in range(roi_width - n_rois, roi_width): # 13, 12, 11, 10:
                 if roi_points[i][r_idx] > 0:
-                    roi_result[i][r_idx] = 1
                     x_bev, y_bev = self.roi_to_BEV_table[i][r_idx]
                     r_pts.append(self.BEV2TEMPLATE_LOOKUPTBL[x_bev][y_bev])
 
-                    cv2.circle(self.BEV_color, self.roi_to_BEV_table[i][r_idx], 2, (0, 255, 255), -1)
                     # last idx is right x
                     r_x = r_idx
                     break
-
-        self.previous_roi_result = roi_result
 
         # two short lane has length of 3points (two short lane is a line)
         if len(l_pts) > 4:
@@ -203,8 +180,6 @@ class LaneDetector:
         return l_x, r_x
 
     def __call__(self, gray, hsv, template=None):
-        self.BEV_color = np.zeros_like(self.BEV_color)
-
         # center line (yellow line)
         center_line_mask = cv2.inRange(hsv, self.low_yellow, self.upper_yellow)
 
@@ -236,6 +211,3 @@ class LaneDetector:
             self.acc_frame_count += 1
 
         return l_x, r_x, self.cur_speed, acceleration        
-
-    def show_BEV(self):
-        cv2.imshow("BEV", self.BEV_color)
